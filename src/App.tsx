@@ -18,12 +18,11 @@ function App() {
   const [quizData, setQuizData] = useState<QuestionType[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<(string | null)[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [answersOpen, setAnswersOpen] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);  const [answersOpen, setAnswersOpen] = useState<string[]>([]);
+  const [shuffledOptions, setShuffledOptions] = useState<{ [key: number]: string[] }>({});
 
   const isOpenQuestion = (q: QuestionType) =>
     !!q.expected_answer && !q.options;
-
   const startQuiz = () => {
     let filtered = fullQuizData;
     if (selectedTopics.length > 0) {
@@ -38,7 +37,16 @@ function App() {
       Math.min(numQuestions, shuffled.length)
     );
 
+    // Create shuffled options for each question with multiple choices
+    const shuffledOptionsMap: { [key: number]: string[] } = {};
+    selectedQuestions.forEach((question, index) => {
+      if (question.options && question.options.length > 0) {
+        shuffledOptionsMap[index] = [...question.options].sort(() => 0.5 - Math.random());
+      }
+    });
+
     setQuizData(selectedQuestions);
+    setShuffledOptions(shuffledOptionsMap);
     setAnswers(Array(selectedQuestions.length).fill(null));
     setAnswersOpen(Array(selectedQuestions.length).fill(""));
     setCurrentQuestionIndex(0);
@@ -72,13 +80,13 @@ function App() {
   };
 
   const finishQuiz = () => setQuizFinished(true);
-
   const resetQuiz = () => {
     setQuizStarted(false);
     setQuizFinished(false);
     setQuizData([]);
     setAnswers([]);
     setAnswersOpen([]);
+    setShuffledOptions({});
     setCurrentQuestionIndex(0);
     setSelected(null);
     setSelectedTopics([]);
@@ -186,17 +194,17 @@ function App() {
                 <p><strong>Risposta attesa:</strong> {currentQuestion.expected_answer}</p>
               </div>
             )}
-          </div>
-        ) : (
+          </div>        ) : (
           <div className="space-y-3">
             {(() => {
               const letterToIndex = { a: 0, b: 1, c: 2, d: 3 } as const;
-              const correctAnswer =
-                currentQuestion.options![letterToIndex[currentQuestion.correct as keyof typeof letterToIndex]];
+              const originalOptions = currentQuestion.options!;
+              const displayOptions = shuffledOptions[currentQuestionIndex] || originalOptions;
+              const correctAnswer = originalOptions[letterToIndex[currentQuestion.correct as keyof typeof letterToIndex]];
 
               return (
                 <>
-                  {currentQuestion.options!.map((opt, idx) => {
+                  {displayOptions.map((opt, idx) => {
                     const isSelected = selected === opt;
                     const isCorrect = opt === correctAnswer;
                     const isWrong = answers[currentQuestionIndex] === opt && opt !== correctAnswer;
